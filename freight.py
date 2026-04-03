@@ -125,7 +125,11 @@ for k in widget_keys:
         if 'drop' in k: 
             # Default logic
             st.session_state[k] = QUICK_LIST[0]
-        else: st.session_state[k] = ""
+        elif k in ['pl_min', 'pl_max', 'pl_weight', 'pl_rate', 'pt_weight', 'pt_rate']:
+            # Skip numeric keys so Streamlit native number_input handles the type initialization properly
+            pass
+        else: 
+            st.session_state[k] = ""
 
 # --- MOCK DATABASE (PRODUCE FOCUSED) ---
 ZIP_MAP = { "93": {"lat": 36.6, "lon": -121.6}, "85": {"lat": 32.6, "lon": -114.6}, "78": {"lat": 26.2, "lon": -98.2}, "33": {"lat": 25.7, "lon": -80.2}, "60": {"lat": 41.8, "lon": -87.6}, "10": {"lat": 40.8, "lon": -73.8}, "30": {"lat": 33.7, "lon": -84.4}, "19": {"lat": 39.9, "lon": -75.1} }
@@ -1422,10 +1426,10 @@ def page_wallet():
                             if st.button("⚡ Get Paid Now (Factoring)", key=f"factor_{job['id']}"):
                                 st.toast("Request sent to Factoring Partner (3% fee).")
 
-                            if claim_flag:
-                                st.warning("Resolve claim before sending.")
-                        elif job['Status'] == "SentToAccounting":
-                            st.info("Awaiting Payment from Shipper.")
+                        if claim_flag:
+                             st.warning("Resolve claim before sending.")
+                    elif job['Status'] == "SentToAccounting":
+                        st.info("Awaiting Payment from Shipper.")
     else:
         st.info("ℹ️ Track freight spend.")
         my_loads = [l for l in st.session_state.loads_db if l['Shipper'] == u['name']]
@@ -1606,7 +1610,7 @@ def page_find_trucks():
                                     st.write(f"**Ins:** {details['Insurance']}")
                                     st.divider()
                                     
-                                    # AUTO INQUquiry BUTTON
+                                    # AUTO INQUIRY BUTTON
                                     if st.button("⚡ Is truck available?", key=f"auto_inq_st_{t['id']}"):
                                          msg_txt = f"Is your truck in {t['Origin City']} still available for {t_date}?"
                                          st.session_state.messages_db.append({
