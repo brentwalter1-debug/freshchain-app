@@ -5,6 +5,7 @@ import math
 import random
 import datetime
 import time
+import html
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
@@ -130,6 +131,7 @@ for k in widget_keys:
 ZIP_MAP = { "93": {"lat": 36.6, "lon": -121.6}, "85": {"lat": 32.6, "lon": -114.6}, "78": {"lat": 26.2, "lon": -98.2}, "33": {"lat": 25.7, "lon": -80.2}, "60": {"lat": 41.8, "lon": -87.6}, "10": {"lat": 40.8, "lon": -73.8}, "30": {"lat": 33.7, "lon": -84.4}, "19": {"lat": 39.9, "lon": -75.1} }
 
 USERS = {
+    # SECURITY NOTE: In production, passwords must be securely hashed using libraries like bcrypt or argon2. 
     "ship_pro": {"pass": "1234", "role": "Shipper", "name": "GreenValley Growers", "stars": 4.9, "verified": True, "contact": "Shipping Dept", "phone": "555-0101", "email": "shipping@greenvalley.com", "profile_pic": None},
     "truck_guy": {"pass": "1234", "role": "Carrier", "name": "Cool Runnings Logistics", "stars": 4.8, "verified": True, "contact": "Jamal Davis", "phone": "555-0202", "email": "dispatch@coolrunnings.com", "profile_pic": None},
 }
@@ -512,6 +514,19 @@ def page_dashboard():
     st.markdown(f"## 👋 {greeting}, {u['name']}")
     st.write("") 
     
+    # --- GET STARTED (DAT STYLE) - CLICKABLE ---
+    with st.container(border=True):
+        st.caption("🚀 Get Started")
+        c1, c2, c3 = st.columns(3)
+        if c1.button("🎥 How to Post a Load", use_container_width=True):
+            st.toast("Go to 'Post Load' in the sidebar to start!")
+        if c2.button("🚛 Find a Truck", use_container_width=True):
+            st.toast("Use 'Find Trucks' to search available capacity.")
+        if c3.button("📦 Manage Shipments", use_container_width=True):
+            st.toast("Track status in 'My Loads'.")
+
+    st.write("")
+    
     # --- ALERTS SECTION (NEW) ---
     alerts = []
     if u['role'] == "Shipper":
@@ -608,7 +623,7 @@ def page_dashboard():
             # MOCK ARTICLE GENERATOR
             for i, site in enumerate(st.session_state.news_sites[:5]):
                 st.markdown(f"""
-                <div class='news-card'><b>📰 News from {site}</b><br>
+                <div class='news-card'><b>📰 News from {html.escape(site)}</b><br>
                 <small style='color:grey'>Market trends analysis and spot rate updates.</small></div>
                 """, unsafe_allow_html=True)
 
@@ -627,6 +642,11 @@ def page_profile():
     with c_rating:
         st.metric("Reputation Score", f"{avg_rating:.1f} ⭐", f"{len(reviews)} Reviews")
         st.caption("Grades public after 3 months.")
+        # FEATURE: Verification Badge
+        if u.get('verified'):
+            st.markdown("<span class='status-badge status-green'>✅ FMCSA Verified</span>", unsafe_allow_html=True)
+        else:
+            st.warning("Not Verified")
     
     with st.container(border=True):
         c1, c2 = st.columns([1, 2])
@@ -641,6 +661,26 @@ def page_profile():
              new_phone = st.text_input("Phone", value=u.get('phone', ''))
              new_email = st.text_input("Email", value=u.get('email', ''))
         
+        st.markdown("---")
+        # FEATURE: TRUST & SAFETY
+        st.subheader("🛡️ Trust & Safety")
+        c_ts1, c_ts2 = st.columns(2)
+        with c_ts1:
+            st.file_uploader("Upload ID / Driver's License", type=['png', 'jpg', 'pdf'])
+        with c_ts2:
+             st.write("Get verified to increase visibility and trust.")
+             if st.button("Submit for Verification"):
+                 st.toast("ID Submitted for Review!")
+
+        st.markdown("---")
+        # FEATURE: NOTIFICATION SETTINGS
+        st.subheader("🔔 Notification Settings")
+        c_n1, c_n2 = st.columns(2)
+        c_n1.checkbox("SMS Alerts (New Loads)", value=True)
+        c_n1.checkbox("SMS Alerts (Bid Updates)", value=True)
+        c_n2.checkbox("Email Summaries", value=False)
+        c_n2.text_input("Alert Mobile Number", value=u.get('phone', ''))
+
         st.markdown("---")
         new_pic = st.file_uploader("Upload New Profile Picture", type=['png', 'jpg'])
         
@@ -990,7 +1030,7 @@ def page_find_loads():
                             st.markdown(f"**{ldate}** • **{l['Origin City']}** ➝ **{l['Dest City']}**")
                             wt = l.get('Weight', 40000)
                             st.caption(f"**{l['id']}** • DH: {l['DH']}mi • {wt:,} lbs • **{l['Commodity']}**")
-                            st.markdown(f"<span class='tag tag-temp'>🌡️ {l['Temp']}</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span class='tag tag-temp'>🌡️ {html.escape(l['Temp'])}</span>", unsafe_allow_html=True)
                             if l.get('TeamReq'): st.error("🚛 Team Required")
                             if l.get('Comments'): st.caption(f"📝 {l['Comments']}")
                         with c2: st.markdown(f"#### ${l['Rate']}")
@@ -1224,6 +1264,18 @@ def page_my_trucks():
                                 if 'StatusLog' not in l: l['StatusLog'] = []
                                 l['StatusLog'].append({'time': timestamp, 'status': new_status, 'note': status_note})
                                 l['LatestStatusNote'] = status_note
+                            
+                            # FEATURE: CARRIER PRE-COOL CHECK
+                            if new_status == "Loading":
+                                st.session_state.pulp_log.append({
+                                    "Time": datetime.datetime.now().strftime(DATE_FMT + " %H:%M"),
+                                    "Product": "Pre-Cool Check",
+                                    "Temp": f"Set Point Check",
+                                    "LoadID": l['id'],
+                                    "Photo_Data": None
+                                })
+                                st.toast("Status updated. Please log Pre-Cool Temp in Tools.")
+
                             st.toast(f"Status updated to: {new_status}")
                             time.sleep(1)
                             st.rerun()
@@ -1377,11 +1429,16 @@ def page_wallet():
                                 
                                 if st.checkbox("Don't ask me again for this session", key=f"da_acct_{job['id']}"):
                                     st.session_state.skip_acct_confirm = True
+                            
+                            # FEATURE: FACTORING
+                            st.divider()
+                            if st.button("⚡ Get Paid Now (Factoring)", key=f"factor_{job['id']}"):
+                                st.toast("Request sent to Factoring Partner (3% fee).")
 
-                            if claim_flag:
-                                st.warning("Resolve claim before sending.")
-                        elif job['Status'] == "SentToAccounting":
-                            st.info("Awaiting Payment from Shipper.")
+                        if claim_flag:
+                             st.warning("Resolve claim before sending.")
+                    elif job['Status'] == "SentToAccounting":
+                        st.info("Awaiting Payment from Shipper.")
     else:
         st.info("ℹ️ Track freight spend.")
         my_loads = [l for l in st.session_state.loads_db if l['Shipper'] == u['name']]
@@ -1392,6 +1449,11 @@ def page_wallet():
         unpaid = sum([l['Rate'] for l in unpaid_loads])
         
         st.metric("Total Accounts Payable", f"${unpaid:,.2f}")
+        
+        # FEATURE: QUICKBOOKS
+        if st.button("📥 Export to QuickBooks"):
+            st.toast("Exporting CSV...")
+        
         st.divider()
         
         # SHIPPER WALLET UPDATE: Search & Sort
