@@ -514,19 +514,6 @@ def page_dashboard():
     st.markdown(f"## 👋 {greeting}, {u['name']}")
     st.write("") 
     
-    # --- GET STARTED (DAT STYLE) - CLICKABLE ---
-    with st.container(border=True):
-        st.caption("🚀 Get Started")
-        c1, c2, c3 = st.columns(3)
-        if c1.button("🎥 How to Post a Load", use_container_width=True):
-            st.toast("Go to 'Post Load' in the sidebar to start!")
-        if c2.button("🚛 Find a Truck", use_container_width=True):
-            st.toast("Use 'Find Trucks' to search available capacity.")
-        if c3.button("📦 Manage Shipments", use_container_width=True):
-            st.toast("Track status in 'My Loads'.")
-
-    st.write("")
-    
     # --- ALERTS SECTION (NEW) ---
     alerts = []
     if u['role'] == "Shipper":
@@ -1030,7 +1017,7 @@ def page_find_loads():
                             st.markdown(f"**{ldate}** • **{l['Origin City']}** ➝ **{l['Dest City']}**")
                             wt = l.get('Weight', 40000)
                             st.caption(f"**{l['id']}** • DH: {l['DH']}mi • {wt:,} lbs • **{l['Commodity']}**")
-                            st.markdown(f"<span class='tag tag-temp'>🌡️ {html.escape(l['Temp'])}</span>", unsafe_allow_html=True)
+                            st.markdown(f"<span class='tag tag-temp'>🌡️ {html.escape(str(l['Temp']))}</span>", unsafe_allow_html=True)
                             if l.get('TeamReq'): st.error("🚛 Team Required")
                             if l.get('Comments'): st.caption(f"📝 {l['Comments']}")
                         with c2: st.markdown(f"#### ${l['Rate']}")
@@ -1435,10 +1422,10 @@ def page_wallet():
                             if st.button("⚡ Get Paid Now (Factoring)", key=f"factor_{job['id']}"):
                                 st.toast("Request sent to Factoring Partner (3% fee).")
 
-                        if claim_flag:
-                             st.warning("Resolve claim before sending.")
-                    elif job['Status'] == "SentToAccounting":
-                        st.info("Awaiting Payment from Shipper.")
+                            if claim_flag:
+                                st.warning("Resolve claim before sending.")
+                        elif job['Status'] == "SentToAccounting":
+                            st.info("Awaiting Payment from Shipper.")
     else:
         st.info("ℹ️ Track freight spend.")
         my_loads = [l for l in st.session_state.loads_db if l['Shipper'] == u['name']]
@@ -1619,7 +1606,7 @@ def page_find_trucks():
                                     st.write(f"**Ins:** {details['Insurance']}")
                                     st.divider()
                                     
-                                    # AUTO INQUIRY BUTTON
+                                    # AUTO INQUquiry BUTTON
                                     if st.button("⚡ Is truck available?", key=f"auto_inq_st_{t['id']}"):
                                          msg_txt = f"Is your truck in {t['Origin City']} still available for {t_date}?"
                                          st.session_state.messages_db.append({
@@ -2000,6 +1987,10 @@ def page_my_loads():
                                  cd2.write(f"**Driver:** {details['Driver']}")
                                  cd2.write(f"**Truck:** {details['Truck']}")
                                  st.info(f"Insurance: {details['Insurance']}")
+                    # NEW: Live IoT Temp Simulation
+                    if l['Status'] in ["Loading", "In Transit"]:
+                         st.markdown(f"**❄️ Live IoT Temp:** `{random.randint(33, 35)}°F` (Updated: Just now)")
+                    
                     if l.get('LatestStatusNote'): st.info(f"🚚 **Current Driver Note:** {l['LatestStatusNote']}")
                     if l.get('StatusLog'):
                         with st.expander("📜 View Past Status Notes"):
