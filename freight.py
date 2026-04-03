@@ -1084,6 +1084,54 @@ def page_directory():
                     st.caption(f"Role: {html.escape(udata['role'])}")
         if not found: st.warning("No companies found.")
 
+
+# --- Helper Pages & Missing Handlers (added to prevent runtime NameError) ---
+def generate_rate_con_text(load):
+    """Return a minimal rate confirmation text for downloads."""
+    parts = [
+        f"Rate Confirmation: {load.get('id', 'N/A')}",
+        f"Origin: {load.get('Origin City', '')} {load.get('Origin Zip', '')}",
+        f"Destination: {load.get('Dest City', '')} {load.get('Dest Zip', '')}",
+        f"Commodity: {load.get('Commodity', '')}",
+        f"Weight: {load.get('Weight', '')} lbs",
+        f"Rate: ${load.get('Rate', '')}",
+    ]
+    return "\n".join(parts)
+
+
+def page_find_loads():
+    """Simple Find Loads page — lists open loads and allows basic bidding/booking."""
+    st.markdown("## 🔎 Find Loads")
+    open_loads = [l for l in st.session_state.loads_db if l.get('Status') == 'Open']
+    if not open_loads:
+        st.info("No open loads.")
+        return
+
+    for l in open_loads:
+        with st.container(border=True):
+            ldate = format_date_range(l.get('DateStart', 'N/A'), l.get('DateEnd', 'N/A'))
+            st.markdown(f"**{ldate}** — {html.escape(l['Origin City'])} ➝ {html.escape(l['Dest City'])}")
+            st.write(f"**{html.escape(l['Commodity'])}** • ${l['Rate']} • {l['Weight']:,} lbs")
+            if l.get('Comments'): st.caption(html.escape(l['Comments']))
+
+            if l.get('BookNow') and st.button("Book Now", key=f"booknow_{l['id']}"):
+                book_load(l['id'])
+
+            if st.session_state.user and st.session_state.user.get('role') == 'Carrier':
+                bid_amt = st.number_input("Offer ($)", value=float(l.get('Rate', 0)), key=f"bid_amt_{l['id']}")
+                bid_comment = st.text_input("Comment (optional)", key=f"bid_c_{l['id']}")
+                if st.button("Place Bid", key=f"place_bid_{l['id']}"):
+                    submit_bid(l['id'], bid_amt, bid_comment)
+
+
+def page_profile():
+    st.markdown("## 👤 Profile")
+    u = st.session_state.user or {}
+    st.write(f"**Company:** {html.escape(u.get('name', 'N/A'))}")
+    st.write(f"**Username:** {html.escape(st.session_state.get('username', ''))}")
+    st.write(f"**Role:** {html.escape(u.get('role', 'N/A'))}")
+    st.write(f"**Tier:** {html.escape(u.get('tier', 'Free'))}")
+
 # --- 7. ROUTING & MAIN EXECUTION ---
 if not st.session_state.authenticated:
     auth_page()
@@ -1120,19 +1168,35 @@ else:
             st.rerun()
     
     # Route Handler
-    if st.session_state.nav_selection == "Dashboard": page_dashboard()
-    elif st.session_state.nav_selection == "Find Loads": page_find_loads()
-    elif st.session_state.nav_selection == "Post Truck": page_post_truck()
-    elif st.session_state.nav_selection == "My Trucks": page_my_trucks()
-    elif st.session_state.nav_selection == "Wallet": page_wallet()
-    elif st.session_state.nav_selection == "Search": page_general_search()
-    elif st.session_state.nav_selection == "Tools": 
-        if u['role'] == "Carrier": page_tools_driver()
-        else: page_tools_shipper()
-    elif st.session_state.nav_selection == "Post Load": page_post_load()
-    elif st.session_state.nav_selection == "My Loads": page_my_loads()
-    elif st.session_state.nav_selection == "Find Trucks": page_find_trucks()
-    elif st.session_state.nav_selection == "Inbox": page_inbox()
-    elif st.session_state.nav_selection == "Profile": page_profile()
-    elif st.session_state.nav_selection == "Directory": page_directory()
-    elif st.session_state.nav_selection == "Subscription": page_subscription()
+    # Corrected Routing Logic
+if st.session_state.nav_selection == "Dashboard": 
+    page_dashboard()
+elif st.session_state.nav_selection == "Find Loads": 
+    page_find_loads()
+elif st.session_state.nav_selection == "Post Truck": 
+    page_post_truck()
+elif st.session_state.nav_selection == "My Trucks": 
+    page_my_trucks()
+elif st.session_state.nav_selection == "Wallet": 
+    page_wallet()
+elif st.session_state.nav_selection == "Search": 
+    page_general_search()
+elif st.session_state.nav_selection == "Tools": 
+    if u['role'] == "Carrier": 
+        page_tools_driver()
+    else: 
+        page_tools_shipper()
+elif st.session_state.nav_selection == "Post Load": 
+    page_post_load()
+elif st.session_state.nav_selection == "My Loads": 
+    page_my_loads()
+elif st.session_state.nav_selection == "Find Trucks": 
+    page_find_trucks()
+elif st.session_state.nav_selection == "Inbox": 
+    page_inbox()
+elif st.session_state.nav_selection == "Profile": 
+    page_profile()
+elif st.session_state.nav_selection == "Directory": 
+    page_directory()
+elif st.session_state.nav_selection == "Subscription": 
+    page_subscription()
